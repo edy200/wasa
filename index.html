@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Juegos de la vaquita</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* Un solo mundo visual: el prado de la vaquita. Columna única, pestañas arriba. */
+:root{
+  color-scheme: light;
+  --cielo:#9cc4dc;
+  --prado:#dcf7d7;
+  --pasto:#8ecd92;
+  --bosque:#2f5d3a;
+  --rosa:#d6336c;
+  --rosa-suave:#ffd3df;
+  --papel:#ffffff;
+  --tinta:#23322a;
+  --display:"Baloo 2","Trebuchet MS",system-ui,sans-serif;
+  --cuerpo:"Nunito","Segoe UI",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:linear-gradient(var(--cielo) 0 150px,var(--pasto) 150px 190px,var(--prado) 190px);
+  color:var(--tinta);font-family:var(--cuerpo);font-size:17px;line-height:1.45;
+  min-height:100%;
+}
+main{max-width:520px;margin:0 auto;padding:20px 16px 40px;display:flex;flex-direction:column;gap:16px}
+header{display:flex;align-items:flex-end;gap:12px;min-height:120px}
+header .secreto{flex:none;border:0;background:none;padding:0;cursor:default;border-radius:16px;-webkit-tap-highlight-color:transparent}
+header img{width:104px;height:auto;display:block;animation:menea 1s ease-in-out infinite alternate;transform-origin:50% 95%}
+h1{font-family:var(--display);font-weight:800;font-size:34px;line-height:1;margin:0 0 6px;color:var(--papel);
+  text-shadow:0 3px 0 var(--bosque);text-wrap:balance}
+header p{margin:0 0 4px;font-weight:700;color:var(--bosque)}
+@keyframes menea{from{transform:rotate(-6deg)}to{transform:rotate(6deg) translateY(-4px)}}
+
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tabs button{font:800 16px/1.1 var(--display);padding:12px 6px;border-radius:14px;border:3px solid var(--bosque);
+  background:var(--papel);color:var(--bosque);cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--bosque);color:var(--papel)}
+
+.juego{background:var(--papel);border:3px solid var(--bosque);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.juego[hidden]{display:none}
+.juego h2{font:800 24px/1.1 var(--display);margin:0;color:var(--bosque)}
+.juego p{margin:0}
+.marcador{display:flex;justify-content:space-between;gap:12px;font-weight:700;font-variant-numeric:tabular-nums}
+.estado{font-weight:700;color:var(--rosa);min-height:1.45em}
+.btn{font:800 18px/1 var(--display);padding:14px 20px;border-radius:14px;border:0;background:var(--bosque);color:var(--papel);cursor:pointer;align-self:flex-start}
+.btn:active{transform:translateY(2px)}
+button:focus-visible{outline:4px solid var(--rosa);outline-offset:2px}
+
+canvas{width:100%;height:auto;border-radius:14px;background:var(--prado);touch-action:none;display:block}
+
+.tablero-marco{border:3px solid var(--bosque);border-radius:12px;overflow:hidden;background:var(--prado);width:100%;max-width:max(220px,calc(100vh - 190px));align-self:center;touch-action:none}
+.tablero{display:grid;grid-template-columns:repeat(8,1fr)}
+.tablero div{aspect-ratio:1;box-shadow:inset 0 0 0 1px rgba(47,93,58,.18)}
+.tablero div.llena,.pieza i.on,.fantasma i.on{box-shadow:inset 0 0 0 2px rgba(255,255,255,.55),inset 0 -4px 0 rgba(0,0,0,.18);border-radius:5px}
+.tablero div.prev{background:var(--rosa-suave)}
+.tablero div.borra{animation:borra .25s ease-out}
+@keyframes borra{from{background:#fff;transform:scale(1.15)}to{transform:scale(.6);opacity:.2}}
+.bandeja{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;min-height:112px;touch-action:none}
+.hueco{display:flex;align-items:center;justify-content:center;min-height:112px;border-radius:12px;background:var(--prado);touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.hueco.vacio{cursor:default;opacity:.5}
+.hueco.arrastra .pieza{opacity:.25}
+.pieza,.fantasma{display:grid}
+.pieza i{width:19px;height:19px}
+.fantasma{position:fixed;z-index:4;pointer-events:none;opacity:.88}
+.hoyos{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.hoyos button{aspect-ratio:1;border-radius:50%;border:3px solid var(--bosque);background:var(--pasto);cursor:pointer;padding:0;overflow:hidden;position:relative}
+.hoyos img{position:absolute;left:12%;width:76%;top:100%;transition:top .12s ease-out;pointer-events:none}
+.hoyos button.arriba img{top:14%}
+.hoyos button.toque{background:var(--rosa-suave)}
+
+.carta{background:var(--papel);border:3px solid var(--rosa);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:10px}
+.carta h2{font:800 24px/1.1 var(--display);margin:0;color:var(--rosa)}
+.carta p{margin:0;max-width:60ch}
+.carta .firma{font:800 22px/1.1 var(--display);color:var(--rosa);align-self:flex-end}
+.esquina{position:fixed;right:0;bottom:0;width:56px;height:56px;border:0;padding:0;background:transparent;cursor:default;z-index:3;-webkit-tap-highlight-color:transparent}
+.frase{font:800 clamp(34px,10vw,56px)/1.05 var(--display);color:var(--papel);text-align:center;margin:0;text-shadow:0 4px 0 var(--rosa);text-wrap:balance}
+.velo{position:fixed;inset:0;background:rgba(35,50,42,.86);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px;z-index:5}
+.velo[hidden]{display:none}
+.velo video{max-width:100%;max-height:78vh;border-radius:18px;border:4px solid var(--papel);background:#000}
+.velo .btn{align-self:center;background:var(--papel);color:var(--bosque)}
+
+@media (prefers-reduced-motion:reduce){header img{animation:none}.hoyos img{transition:none}}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <button class="secreto" id="secreto" aria-label="Vaquita"><img src="vaca.png" alt="Vaquita blanca con manchas negras"></button>
+    <div>
+      <h1>Juegos de la vaquita</h1>
+      <p>Tres juegos para pasar el rato.</p>
+    </div>
+  </header>
+
+  <div class="tabs" role="tablist" aria-label="Minijuegos">
+    <button role="tab" id="tab-0" aria-selected="true" aria-controls="j-0">Vaca voladora</button>
+    <button role="tab" id="tab-1" aria-selected="false" aria-controls="j-1">Bloques</button>
+    <button role="tab" id="tab-2" aria-selected="false" aria-controls="j-2">Toca la vaca</button>
+  </div>
+
+  <section class="juego" id="j-0" role="tabpanel" aria-labelledby="tab-0">
+    <h2>Vaca voladora</h2>
+    <p>Toca la pantalla o pulsa espacio para que la vaquita aletee. Pasa entre los troncos sin chocar y llega lo más lejos que puedas.</p>
+    <div class="marcador"><span>Puntos: <b id="c-pts">0</b></span><span>Mejor: <b id="c-t">0</b></span></div>
+    <canvas id="lienzo" width="360" height="460" aria-label="Campo de juego"></canvas>
+    <p class="estado" id="c-msg" aria-live="polite"></p>
+    <button class="btn" id="c-go">Jugar</button>
+  </section>
+
+  <section class="juego" id="j-1" role="tabpanel" aria-labelledby="tab-1" hidden>
+    <h2>Bloques</h2>
+    <p>Arrastra las piezas al tablero. Cada fila o columna completa se borra y da puntos. El juego sigue hasta que ninguna pieza quepa.</p>
+    <div class="marcador"><span>Puntos: <b id="b-pts">0</b></span><span>Mejor: <b id="b-mejor">0</b></span></div>
+    <div class="tablero-marco"><div class="tablero" id="tablero"></div></div>
+    <div class="bandeja" id="bandeja"></div>
+    <p class="estado" id="b-msg" aria-live="polite"></p>
+    <button class="btn" id="b-go">Empezar de nuevo</button>
+  </section>
+
+  <section class="juego" id="j-2" role="tabpanel" aria-labelledby="tab-2" hidden>
+    <h2>Toca la vaca</h2>
+    <p>La vaquita se asoma un momento. Tócala 10 veces en 20 segundos.</p>
+    <div class="marcador"><span>Toques: <b id="t-pts">0</b> / 10</span><span>Tiempo: <b id="t-t">20</b> s</span></div>
+    <div class="hoyos" id="hoyos"></div>
+    <p class="estado" id="t-msg" aria-live="polite"></p>
+    <button class="btn" id="t-go">Jugar</button>
+  </section>
+
+  <section class="carta" aria-labelledby="carta-t">
+    <h2 id="carta-t">Para ti, amor</h2>
+    <p>Estos 9 meses han sido los más lindos que he vivido. Ha habido sus momentos bajos y sus momentos buenos, pero siempre estamos con el otro.</p>
+    <p>Lo único que te puedo decir, amor, son las gracias. Y diviértete en esta página.</p>
+    <p class="firma">Con mucho amor, Edy</p>
+  </section>
+</main>
+<button class="esquina" id="esquina" aria-label="Esquina"></button>
+<div class="velo" id="velo2" hidden role="dialog" aria-modal="true" aria-label="Mensaje">
+  <p class="frase">Todo es un juego</p>
+  <button class="btn" id="cerrar2">Cerrar</button>
+</div>
+
+<div class="velo" id="velo" hidden role="dialog" aria-modal="true" aria-label="Video">
+  <video id="video" src="vaca.mp4" controls loop playsinline preload="metadata"></video>
+  <button class="btn" id="cerrar">Cerrar</button>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+function leer(k){ try{ return parseInt(localStorage.getItem(k),10) || 0; }catch(e){ return 0; } }
+function guardar(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+
+/* ---------- pestañas ---------- */
+const tabs = [0,1,2].map(i => $('tab-'+i));
+tabs.forEach((t,i) => t.addEventListener('click', () => {
+  tabs.forEach((x,j) => { x.setAttribute('aria-selected', j===i); $('j-'+j).hidden = j!==i; });
+  pararCorazones(); pararToca();
+}));
+
+/* ---------- 1. Vaca voladora ---------- */
+const cv = $('lienzo'), g = cv.getContext('2d'), W = cv.width, H = cv.height;
+const vaca = new Image(); vaca.src = 'vaca.png'; vaca.onload = pintar;
+const VW = 58, VH = 51, VX = 90, SUELO = H-36, HUECO = 158, ANCHO = 58;
+let vy = H/2, vv = 0, tubos = [], cPts = 0, cMejor = leer('vaca-mejor'), cRaf = 0, cUlt = 0, cDist = 0, cActivo = false;
+$('c-t').textContent = cMejor;
+function tronco(x,y,h){
+  g.fillStyle='#8a6a43'; g.fillRect(x+8,y,ANCHO-16,h);
+  g.strokeStyle='#2f5d3a'; g.lineWidth=3; g.strokeRect(x+8,y,ANCHO-16,h);
+}
+function copa(x,y){
+  g.fillStyle='#5fae6a'; g.strokeStyle='#2f5d3a'; g.lineWidth=3;
+  g.beginPath(); g.roundRect(x,y,ANCHO,26,12); g.fill(); g.stroke();
+}
+function pintar(){
+  g.fillStyle='#9cc4dc'; g.fillRect(0,0,W,H);
+  g.fillStyle='#fff'; [[60,70],[230,120],[150,210]].forEach(([x,y]) => { g.beginPath(); g.ellipse(x,y,34,12,0,0,7); g.ellipse(x+22,y-8,22,12,0,0,7); g.fill(); });
+  tubos.forEach(t => {
+    tronco(t.x,0,t.y-26); copa(t.x,t.y-26);
+    tronco(t.x,t.y+HUECO+26,SUELO-(t.y+HUECO+26)); copa(t.x,t.y+HUECO);
+  });
+  g.fillStyle='#8ecd92'; g.fillRect(0,SUELO,W,H-SUELO);
+  g.fillStyle='#2f5d3a'; g.fillRect(0,SUELO,W,3);
+  if(vaca.complete){
+    g.save(); g.translate(VX,vy); g.rotate(Math.max(-0.45,Math.min(0.9,vv/520)));
+    g.drawImage(vaca,-VW/2,-VH/2,VW,VH); g.restore();
+  }
+}
+function cicloCor(t){
+  const dt = Math.min(0.033,(t-cUlt)/1000); cUlt = t;
+  vv += 1050*dt; vy += vv*dt;
+  cDist += 135*dt;
+  if(cDist>=215){ cDist=0; tubos.push({x:W+10,y:50+Math.random()*(SUELO-HUECO-100),ok:false}); }
+  let choque = vy+VH/2-6 > SUELO || vy-VH/2 < -30;
+  tubos.forEach(tb => {
+    tb.x -= 135*dt;
+    if(!tb.ok && tb.x+ANCHO < VX-VW/2){ tb.ok=true; cPts++; $('c-pts').textContent=cPts; }
+    const rx = VW/2-9, ry = VH/2-8;
+    if(VX+rx > tb.x && VX-rx < tb.x+ANCHO && (vy-ry < tb.y || vy+ry > tb.y+HUECO)) choque = true;
+  });
+  tubos = tubos.filter(tb => tb.x > -ANCHO-10);
+  pintar();
+  if(choque){
+    const record = cPts > cMejor;
+    cMejor = Math.max(cMejor,cPts); $('c-t').textContent=cMejor; guardar('vaca-mejor',cMejor);
+    finCor(record ? '¡Nuevo récord! '+cPts+' puntos.' : 'Chocaste con '+cPts+' puntos. Tu mejor marca es '+cMejor+'.');
+    return;
+  }
+  cRaf = requestAnimationFrame(cicloCor);
+}
+function finCor(msg){ cActivo=false; $('c-msg').textContent=msg; $('c-go').textContent='Jugar otra vez'; $('c-go').hidden=false; }
+function pararCorazones(){ if(cActivo){ cancelAnimationFrame(cRaf); finCor('Juego en pausa. Pulsa Jugar para empezar de nuevo.'); } }
+function empezar(){
+  tubos=[]; cPts=0; cDist=120; vy=H/2-40; vv=-300;
+  $('c-pts').textContent=0; $('c-msg').textContent=''; $('c-go').hidden=true;
+  cActivo=true; cUlt=performance.now(); cRaf=requestAnimationFrame(cicloCor);
+}
+function aletear(){ if(cActivo) vv = -330; }
+$('c-go').addEventListener('click', empezar);
+cv.addEventListener('pointerdown', e => { e.preventDefault(); cActivo ? aletear() : empezar(); });
+document.addEventListener('keydown', e => {
+  if(e.code==='Space' && !$('j-0').hidden && velo.hidden && velo2.hidden){ e.preventDefault(); cActivo ? aletear() : empezar(); }
+});
+pintar();
+
+/* ---------- 2. Bloques ---------- */
+const N = 8, COLORES = ['#d6336c','#3f8f55','#3b82c4','#e2a019','#3a3a3a'];
+const FORMAS = [
+  [[1]], [[1,1]], [[1],[1]], [[1,1,1]], [[1],[1],[1]], [[1,1,1,1]], [[1],[1],[1],[1]], [[1,1,1,1,1]], [[1],[1],[1],[1],[1]],
+  [[1,1],[1,1]], [[1,1,1],[1,1,1],[1,1,1]], [[1,1,1],[1,1,1]], [[1,1],[1,1],[1,1]],
+  [[1,0],[1,1]], [[0,1],[1,1]], [[1,1],[1,0]], [[1,1],[0,1]],
+  [[1,0,0],[1,0,0],[1,1,1]], [[0,0,1],[0,0,1],[1,1,1]], [[1,1,1],[1,0,0],[1,0,0]], [[1,1,1],[0,0,1],[0,0,1]],
+  [[1,1,1],[0,1,0]], [[0,1,0],[1,1,1]], [[1,0],[1,1],[1,0]], [[0,1],[1,1],[0,1]],
+  [[1,1,0],[0,1,1]], [[0,1,1],[1,1,0]], [[1,0],[1,1],[0,1]], [[0,1],[1,1],[1,0]],
+  [[1,0],[1,0],[1,1]], [[0,1],[0,1],[1,1]], [[1,1,1],[1,0,0]], [[1,1,1],[0,0,1]]
+];
+const tablero = $('tablero'), bandeja = $('bandeja');
+let bq = [], piezas = [], bPts = 0, bMejor = leer('bloques-mejor'), bFin = false, arr = null;
+const celdas = [], huecos = [];
+for(let i=0;i<N*N;i++){ const d=document.createElement('div'); tablero.appendChild(d); celdas.push(d); }
+for(let i=0;i<3;i++){
+  const h=document.createElement('div'); h.className='hueco'; bandeja.appendChild(h); huecos.push(h);
+  h.addEventListener('pointerdown', e => agarrar(e,i));
+}
+/* El arrastre se sigue desde la ventana, para que no se pierda al salir de la bandeja. */
+window.addEventListener('pointermove', e => { if(arr && e.pointerId===arr.id) llevar(e); });
+window.addEventListener('pointerup', e => { if(arr && e.pointerId===arr.id) soltar(); });
+window.addEventListener('pointercancel', e => { if(arr && e.pointerId===arr.id) soltar(); });
+document.addEventListener('touchmove', e => { if(arr) e.preventDefault(); }, {passive:false});
+function cabe(f,r,c){
+  if(r<0 || c<0 || r+f.length>N || c+f[0].length>N) return false;
+  for(let y=0;y<f.length;y++) for(let x=0;x<f[0].length;x++) if(f[y][x] && bq[(r+y)*N+c+x]) return false;
+  return true;
+}
+function cabeAlgo(f){ for(let r=0;r<N;r++) for(let c=0;c<N;c++) if(cabe(f,r,c)) return true; return false; }
+function dibujaForma(el,p,lado){
+  el.textContent=''; el.style.gridTemplateColumns='repeat('+p.f[0].length+','+(lado?lado+'px':'19px')+')';
+  p.f.forEach(fila => fila.forEach(v => { const i=document.createElement('i');
+    if(lado){ i.style.width=lado+'px'; i.style.height=lado+'px'; }
+    if(v){ i.className='on'; i.style.background=p.col; } el.appendChild(i); }));
+}
+function pintaTablero(){
+  celdas.forEach((d,i) => { d.className = bq[i] ? 'llena' : ''; d.style.background = bq[i] || ''; });
+}
+function pintaBandeja(){
+  huecos.forEach((h,i) => {
+    h.textContent=''; h.classList.toggle('vacio',!piezas[i]);
+    if(piezas[i]){ const d=document.createElement('div'); d.className='pieza'; dibujaForma(d,piezas[i]); h.appendChild(d); }
+  });
+}
+function nuevasPiezas(){
+  piezas = [0,1,2].map(() => ({f:FORMAS[Math.floor(Math.random()*FORMAS.length)], col:COLORES[Math.floor(Math.random()*COLORES.length)]}));
+  for(let n=0; n<40 && !piezas.some(p => cabeAlgo(p.f)); n++)
+    piezas[0] = {f:FORMAS[Math.floor(Math.random()*FORMAS.length)], col:piezas[0].col};
+}
+function puntos(n){
+  bPts += n; $('b-pts').textContent=bPts;
+  if(bPts>bMejor){ bMejor=bPts; $('b-mejor').textContent=bMejor; guardar('bloques-mejor',bMejor); }
+}
+function colocar(i,r,c){
+  const p = piezas[i]; let n = 0;
+  p.f.forEach((fila,y) => fila.forEach((v,x) => { if(v){ bq[(r+y)*N+c+x]=p.col; n++; } }));
+  piezas[i]=null; puntos(n);
+  const borrar = new Set(); let lineas = 0;
+  for(let a=0;a<N;a++){
+    let fila=true, col=true;
+    for(let b=0;b<N;b++){ if(!bq[a*N+b]) fila=false; if(!bq[b*N+a]) col=false; }
+    if(fila){ lineas++; for(let b=0;b<N;b++) borrar.add(a*N+b); }
+    if(col){ lineas++; for(let b=0;b<N;b++) borrar.add(b*N+a); }
+  }
+  pintaTablero();
+  if(lineas){
+    puntos(10*lineas*lineas);
+    borrar.forEach(k => { bq[k]=0; celdas[k].classList.add('borra'); });
+    $('b-msg').textContent = lineas>1 ? '¡'+lineas+' líneas de un golpe!' : '¡Línea!';
+    setTimeout(pintaTablero,250);
+  } else $('b-msg').textContent='';
+  if(piezas.every(p => !p)) nuevasPiezas();
+  pintaBandeja();
+  if(!piezas.some(p => p && cabeAlgo(p.f))){
+    bFin=true; $('b-msg').textContent='Ya no cabe ninguna pieza. Hiciste '+bPts+' puntos.';
+  }
+}
+function agarrar(e,i){
+  if(bFin || !piezas[i] || arr) return;
+  e.preventDefault();
+  /* Antes de arrastrar, deja a la vista el tablero completo. */
+  const tope = tablero.getBoundingClientRect().top;
+  if(tope < 8) window.scrollBy(0, tope-8);
+  const lado = tablero.getBoundingClientRect().width/N;
+  const fan = document.createElement('div'); fan.className='fantasma'; dibujaForma(fan,piezas[i],lado);
+  document.body.appendChild(fan); huecos[i].classList.add('arrastra');
+  arr = {i, id:e.pointerId, fan, lado, dest:null, sube: e.pointerType==='mouse' ? 10 : 60};
+  llevar(e);
+}
+function llevar(e){
+  const f = piezas[arr.i].f, L = arr.lado, w = f[0].length*L, h = f.length*L;
+  const x = e.clientX - w/2, y = e.clientY - h - arr.sube;
+  arr.fan.style.left = x+'px'; arr.fan.style.top = y+'px';
+  const r0 = tablero.getBoundingClientRect();
+  let c = Math.round((x-r0.left)/L), r = Math.round((y-r0.top)/L);
+  /* Si la pieza se sale del borde por poco, se ajusta a la orilla. */
+  if(c >= -1 && c <= N-f[0].length+1) c = Math.max(0,Math.min(N-f[0].length,c));
+  if(r >= -1 && r <= N-f.length+1) r = Math.max(0,Math.min(N-f.length,r));
+  celdas.forEach(d => d.classList.remove('prev'));
+  if(cabe(f,r,c)){
+    arr.dest = {r,c};
+    f.forEach((fila,yy) => fila.forEach((v,xx) => { if(v) celdas[(r+yy)*N+c+xx].classList.add('prev'); }));
+  } else arr.dest = null;
+}
+function soltar(){
+  const a = arr; arr = null;
+  a.fan.remove(); huecos[a.i].classList.remove('arrastra');
+  celdas.forEach(d => d.classList.remove('prev'));
+  if(a.dest) colocar(a.i,a.dest.r,a.dest.c);
+}
+function nuevoBloques(){
+  bq = new Array(N*N).fill(0); bPts=0; bFin=false;
+  $('b-pts').textContent=0; $('b-mejor').textContent=bMejor; $('b-msg').textContent='';
+  nuevasPiezas(); pintaTablero(); pintaBandeja();
+}
+$('b-go').addEventListener('click', nuevoBloques);
+nuevoBloques();
+
+/* ---------- 3. Toca la vaca ---------- */
+const hoyos = [];
+for(let i=0;i<9;i++){
+  const b=document.createElement('button'); b.id='hoyo-'+i; b.setAttribute('aria-label','Hoyo '+(i+1));
+  const im=document.createElement('img'); im.src='vaca.png'; im.alt=''; b.appendChild(im);
+  b.addEventListener('pointerdown', () => tocar(b)); $('hoyos').appendChild(b); hoyos.push(b);
+}
+let tPts=0, tResta=20, tReloj=0, tSale=0, tBaja=0, tActivo=false;
+function asomar(){
+  hoyos.forEach(h => h.classList.remove('arriba'));
+  let libres = hoyos.filter(h => h!==asomar.ult);
+  const h = libres[Math.floor(Math.random()*libres.length)]; asomar.ult=h;
+  h.classList.add('arriba');
+  clearTimeout(tBaja); tBaja=setTimeout(() => h.classList.remove('arriba'), 750);
+}
+function tocar(b){
+  if(!tActivo || !b.classList.contains('arriba')) return;
+  b.classList.remove('arriba'); b.classList.add('toque'); setTimeout(() => b.classList.remove('toque'),180);
+  tPts++; $('t-pts').textContent=tPts;
+  if(tPts>=10){ finToca('¡Ganaste! Qué buenos reflejos.'); }
+}
+function finToca(msg){
+  tActivo=false; clearInterval(tReloj); clearInterval(tSale); clearTimeout(tBaja);
+  hoyos.forEach(h => h.classList.remove('arriba'));
+  $('t-msg').textContent=msg; $('t-go').textContent='Jugar otra vez'; $('t-go').hidden=false;
+}
+function pararToca(){ if(tActivo) finToca('Juego en pausa. Pulsa Jugar para empezar de nuevo.'); }
+$('t-go').addEventListener('click', () => {
+  tPts=0; tResta=20; tActivo=true;
+  $('t-pts').textContent=0; $('t-t').textContent=20; $('t-msg').textContent=''; $('t-go').hidden=true;
+  asomar(); tSale=setInterval(asomar,900);
+  tReloj=setInterval(() => { tResta--; $('t-t').textContent=tResta;
+    if(tResta<=0) finToca('Se acabó el tiempo. Lograste '+tPts+' toques. Inténtalo otra vez.'); },1000);
+});
+
+/* ---------- botón escondido: la vaquita del encabezado ---------- */
+const velo=$('velo'), video=$('video');
+$('secreto').addEventListener('click', () => {
+  pararCorazones(); pararToca();
+  velo.hidden=false; video.currentTime=0;
+  const p=video.play(); if(p) p.catch(() => {});
+  $('cerrar').focus();
+});
+function cerrar(){ video.pause(); velo.hidden=true; $('secreto').focus(); }
+$('cerrar').addEventListener('click', cerrar);
+velo.addEventListener('click', e => { if(e.target===velo) cerrar(); });
+document.addEventListener('keydown', e => { if(e.key==='Escape' && !velo.hidden) cerrar(); });
+
+/* ---------- segundo secreto: la esquina inferior derecha ---------- */
+const velo2=$('velo2');
+function cerrar2(){ velo2.hidden=true; }
+$('esquina').addEventListener('click', () => { pararCorazones(); pararToca(); velo2.hidden=false; $('cerrar2').focus(); });
+$('cerrar2').addEventListener('click', cerrar2);
+velo2.addEventListener('click', e => { if(e.target===velo2) cerrar2(); });
+document.addEventListener('keydown', e => { if(e.key==='Escape' && !velo2.hidden) cerrar2(); });
+</script>
+</body>
+</html>
